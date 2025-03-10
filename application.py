@@ -144,7 +144,7 @@ def register():
     date = request.json.get('date', None)
 
     try:
-        date = datetime.strptime(date, '%d/%m/%Y').strftime('%d/%m/%Y')
+        date = datetime.strptime(date, '%d/%m/%Y').strftime('%Y/%m/%d')
     except ValueError:
         return jsonify({"msg": "Invalid date format"}), 400
 
@@ -297,7 +297,7 @@ def createDate():
 
     try:
         date = datetime.strptime(date, '%d/%m/%Y %H:00:00')
-        day = date.strftime('%d/%m/%Y')
+        day = date.strftime('%Y/%m/%d')
         hour = date.strftime('%H')
     except ValueError:
         return jsonify({"msg": "Invalid date format"}), 400
@@ -311,7 +311,7 @@ def createDate():
         "username": current_user,
         "day": day,
         "hour": hour,
-        "created_at": datetime.now().strftime('%d/%m/%Y %H:%M:%S'),
+        "created_at": datetime.now().strftime('%Y/%m/%d %H:%M:%S'),
         "center": request.json.get('center', None)
     }
     mycol.insert_one(new_date)
@@ -330,11 +330,18 @@ def getDatesByDay():
     security:
         - Bearer: []
     parameters:
-        - name: day
+        - name: body
           in: body
           type: string
           required: true
-          description: El día para el cual se desean obtener las citas, entre 1 y 31.
+          description: El día para el cual se desean obtener las citas en formato DD/MM/YYYY.
+          schema:
+            type: object
+            properties:
+                day:
+                    type: string
+                    description: Fecha de la cita en formato DD/MM/YYYY
+                    example: "25/12/2025"
     responses:
         200:
             description: Una lista de citas para el día especificado.
@@ -357,8 +364,7 @@ def getDatesByDay():
     mycol = mydb["citas"]
     day = request.json.get('day', None)
 
-    if not day or (day > 31 or day < 1):
-        return jsonify({"msg": "Bad request"}), 400
+    day = datetime.strptime(day, '%d/%m/%Y').strftime("%Y/%m/%d")
 
     dates = mycol.find({"day": day, "cancel": {"$ne": 1}}, {"_id": 0})
     
@@ -468,7 +474,7 @@ def deleteDate():
 
     try:
         date = datetime.strptime(date, '%d/%m/%Y %H:00:00')
-        day = date.strftime('%d/%m/%Y')
+        day = date.strftime('%Y/%m/%d')
         hour = date.strftime('%H')
     except ValueError:
         return jsonify({"msg": "Invalid date format"}), 400
@@ -492,7 +498,7 @@ def deleteDate():
 @jwt_required()
 def getDates():
     """
-    Obtiene las citas no canceladas del usuario actual.
+    Obtiene todas las citas no canceladas.
     ---
     tags:
         - Citas
@@ -518,13 +524,13 @@ def getDates():
                             description: El nombre del doctor.
     """
 
-    current_user = get_jwt_identity()
     mydb = myclient["Clinica"]
     mycol = mydb["citas"]
 
     dates = mycol.find({"cancel": {"$ne": 1}}, {"_id": 0})
    
     return jsonify(format_dates(list(dates)))
+
 
 @app.route("/migracion", methods=['GET'])
 def migracion():
@@ -608,7 +614,7 @@ def patchCurrentuser():
 
     if date:
         try:
-            date = datetime.strptime(date, '%d/%m/%Y').strftime('%d/%m/%Y')
+            date = datetime.strptime(date, '%d/%m/%Y').strftime('%Y/%m/%d')
         except ValueError:
             return jsonify({"msg": "Invalid date format"}), 400
 
@@ -630,7 +636,7 @@ def patchCurrentuser():
 def format_dates(dates):
     result = []
     for date in dates:
-        date['date'] = f"{date['day']} {date['hour']}:00:00"
+        date['date'] = f"{datetime.strptime(date['day'], '%Y/%m/%d').strftime('%d/%m/%Y')} {date['hour']}:00:00"
         del date['day']
         del date['hour']
         result.append(date)
