@@ -4,16 +4,19 @@ Crea las colecciones necesarias y añade índices y datos de ejemplo
 para que la API pueda funcionar desde el primer arranque.
 """
 import os
+import sys
 from typing import Iterable
 
+# Añadir el directorio raíz al path para poder importar config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pymongo
+from pymongo.database import Database
+import bcrypt
+from config import Config
 
 
-MONGO_URI = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/")
-DB_NAME = os.environ.get("MONGODB_DB", "Clinica")
-
-
-def ensure_collections(db: pymongo.database.Database, names: Iterable[str]) -> None:
+def ensure_collections(db: Database, names: Iterable[str]) -> None:
     """Crea las colecciones listadas si no existen todavía."""
     existing = set(db.list_collection_names())
     for name in names:
@@ -21,7 +24,7 @@ def ensure_collections(db: pymongo.database.Database, names: Iterable[str]) -> N
             db.create_collection(name)
 
 
-def ensure_indexes(db: pymongo.database.Database) -> None:
+def ensure_indexes(db: Database) -> None:
     """Configura índices básicos para las colecciones principales."""
     db["usuarios"].create_index("username", unique=True)
     db["citas"].create_index(
@@ -31,7 +34,7 @@ def ensure_indexes(db: pymongo.database.Database) -> None:
     )
 
 
-def seed_centers(db: pymongo.database.Database) -> None:
+def seed_centers(db: Database) -> None:
     """Inserta centros por defecto si la colección está vacía."""
     if db["centros"].count_documents({}) > 0:
         return
@@ -50,17 +53,35 @@ def seed_centers(db: pymongo.database.Database) -> None:
     )
 
 
+def seed_users(db: Database) -> None:
+    """Inserta un usuario administrador por defecto si no existe."""
+    users_col = db["usuarios"]
+    if not users_col.find_one({"username": "admin"}):
+        hashed_password = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        users_col.insert_one({
+            "username": "admin",
+            "password": hashed_password,
+            "name": "Admin",
+            "lastname": "User",
+            "email": "admin@example.com",
+            "phone": "123456789",
+            "date": "01/01/1980"
+        })
+        print("Created default admin user.")
+
+
 def main() -> None:
-    client = pymongo.MongoClient(MONGO_URI)
-    db = client[DB_NAME]
+    client = pymongo.MongoClient(Config.MONGODB_URI)
+    db = client[Config.MONGO_DB_NAME]
 
     ensure_collections(db, ["usuarios", "centros", "citas"])
     ensure_indexes(db)
     seed_centers(db)
+    seed_users(db)
 
     print(
         "Migración completada. Base de datos '{db}' en '{uri}' lista para usarse.".format(
-            db=DB_NAME, uri=MONGO_URI
+            db=Config.MONGO_DB_NAME, uri=Config.MONGODB_URI
         )
     )
 

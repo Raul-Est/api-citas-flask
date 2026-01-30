@@ -19,13 +19,31 @@ import bcrypt
 from flask_cors import CORS
 
 
+from config import Config
+
 app = Flask(__name__)
 
 CORS(app)
 
-app.config["JWT_SECRET_KEY"] = "misuperclavedeldestinofinal"
+app.config.from_object(Config)
 
 jwt = JWTManager(app)
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": 'apispec_1',
+            "route": '/apispec_1.json',
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda model: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/apidocs/",
+    "uiversion": 3
+}
+
 swagger = Swagger(app, template={
     "swagger": "2.0",
     "info": {
@@ -38,14 +56,14 @@ swagger = Swagger(app, template={
             "type": "apiKey",
             "name": "Authorization",
             "in": "header",
-            "description": "Añade 'Bearer <tu_token>' para autenticación"
+            "description": "Añade 'Bearer <tu_token>' para autenticación. Ejemplo: 'Bearer eye...' "
         }
     },
     "security": [{"Bearer": []}]
-})
+}, config=swagger_config)
 
-mongo_uri = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/")
-myclient = pymongo.MongoClient(mongo_uri)
+myclient = pymongo.MongoClient(app.config["MONGODB_URI"])
+mydb_name = app.config["MONGO_DB_NAME"]
 
 
 @app.route('/', methods=['GET'])
@@ -77,7 +95,7 @@ def login():
       401:
         description: Credenciales incorrectas
     """
-    mydb = myclient["Clinica"]
+    mydb = myclient[mydb_name]
     mycol = mydb["usuarios"]
 
     username = request.json.get('username', None)
@@ -135,7 +153,7 @@ def register():
         400:
             description: Solicitud incorrecta
     """
-    mydb = myclient["Clinica"]
+    mydb = myclient[mydb_name]
     mycol = mydb["usuarios"]
 
     username = request.json.get('username', None)
@@ -202,7 +220,7 @@ def center():
                 description: Teléfono del centro
     """
 
-    mydb = myclient["Clinica"]
+    mydb = myclient[mydb_name]
     mycol = mydb["centros"]
     centers = mycol.find({}, {"_id": 0})
     return jsonify(list(centers))
@@ -247,7 +265,7 @@ def profile():
                         example: "25/12/2025"
     """
     current_user = get_jwt_identity()
-    mydb = myclient["Clinica"]
+    mydb = myclient[mydb_name]
     mycol = mydb["usuarios"]
     user = mycol.find_one({"username": current_user}, {"_id": 0, "password": 0})
     return jsonify(user)
@@ -287,7 +305,7 @@ def createDate():
     """
 
     current_user = get_jwt_identity()
-    mydb = myclient["Clinica"]
+    mydb = myclient[mydb_name]
     mycol = mydb["citas"]
     myCenters = mydb["centros"]
 
@@ -356,7 +374,7 @@ def getDatesByDay():
             description: Solicitud incorrecta, el parámetro 'day' es requerido.
     """
 
-    mydb = myclient["Clinica"]
+    mydb = myclient[mydb_name]
     mycol = mydb["citas"]
     day = request.json.get('day', None)
 
@@ -401,7 +419,7 @@ def getDateByUser():
     """
 
     current_user = get_jwt_identity()
-    mydb = myclient["Clinica"]
+    mydb = myclient[mydb_name]
     mycol = mydb["citas"]
 
     dates = mycol.find({"username": current_user, "cancel": {"$ne": 1}}, {"_id": 0})
@@ -463,7 +481,7 @@ def deleteDate():
 
 
     current_user = get_jwt_identity()
-    mydb = myclient["Clinica"]
+    mydb = myclient[mydb_name]
     mycol = mydb["citas"]
 
     date = request.json.get('date', None)
@@ -522,7 +540,7 @@ def getDates():
     """
 
     current_user = get_jwt_identity()
-    mydb = myclient["Clinica"]
+    mydb = myclient[mydb_name]
     mycol = mydb["citas"]
 
     dates = mycol.find({"cancel": {"$ne": 1}}, {"_id": 0})
@@ -534,7 +552,7 @@ def migracion():
 
     dblist = myclient.list_database_names()
     if "Clinica" not in dblist:
-        mydb = myclient["Clinica"]
+        mydb = myclient[mydb_name]
         collections = ["usuarios", "centros", "citas"]
 
         for collection in collections:
