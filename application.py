@@ -11,15 +11,22 @@ from flask_jwt_extended import JWTManager
 
 from datetime import datetime
 
+"""
 from flasgger import Swagger
+"""
 
-import pymongo
 import bcrypt
 
 from flask_cors import CORS
-
-
 from config import Config
+
+
+"""
+Imports de repositorios con SQL
+"""
+
+from Repositories.UsersRepository import UsersRepository
+
 
 app = Flask(__name__)
 
@@ -28,6 +35,10 @@ CORS(app)
 app.config.from_object(Config)
 
 jwt = JWTManager(app)
+
+"""
+Swagger comentado por problemas en los ordenadores de clase en joyfe a la hora de compilar
+
 swagger_config = {
     "headers": [],
     "specs": [
@@ -61,10 +72,7 @@ swagger = Swagger(app, template={
     },
     "security": [{"Bearer": []}]
 }, config=swagger_config)
-
-myclient = pymongo.MongoClient(app.config["MONGODB_URI"])
-mydb_name = app.config["MONGO_DB_NAME"]
-
+"""
 
 @app.route('/', methods=['GET'])
 def hello():
@@ -95,19 +103,15 @@ def login():
       401:
         description: Credenciales incorrectas
     """
-    mydb = myclient[mydb_name]
-    mycol = mydb["usuarios"]
 
     username = request.json.get('username', None)
     password = request.json.get('password', None)
 
-    print(username)
-    print(password)
-
     if not username or not password:
         return jsonify({"msg": "Bad username or password"}), 401
 
-    user = mycol.find_one({"username": username})
+    repository = UsersRepository()
+    user = repository.getUserByUsername(username)
 
     if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
         access_token = create_access_token(identity=username)
