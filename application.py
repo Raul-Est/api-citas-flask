@@ -21,13 +21,13 @@ from flask_cors import CORS
 
 from config import Config
 
-app = Flask(__name__)
+application = Flask(__name__)
 
-CORS(app)
+CORS(application)
 
-app.config.from_object(Config)
+application.config.from_object(Config)
 
-jwt = JWTManager(app)
+jwt = JWTManager(application)
 swagger_config = {
     "headers": [],
     "specs": [
@@ -44,7 +44,7 @@ swagger_config = {
     "uiversion": 3
 }
 
-swagger = Swagger(app, template={
+swagger = Swagger(application, template={
     "swagger": "2.0",
     "info": {
         "title": "API de Clínica",
@@ -62,16 +62,16 @@ swagger = Swagger(app, template={
     "security": [{"Bearer": []}]
 }, config=swagger_config)
 
-myclient = pymongo.MongoClient(app.config["MONGODB_URI"])
-mydb_name = app.config["MONGO_DB_NAME"]
+myclient = pymongo.MongoClient(application.config["MONGODB_URI"])
+mydb_name = application.config["MONGO_DB_NAME"]
 
 
-@app.route('/', methods=['GET'])
+@application.route('/', methods=['GET'])
 def hello():
     return 'Hello, World!'
 
 
-@app.route('/login', methods=['POST'])
+@application.route('/login', methods=['POST'])
 def login():
     """
     Iniciar sesión en la aplicación
@@ -116,7 +116,7 @@ def login():
         return jsonify({"msg": "Bad username or password"}), 401
 
 
-@app.route("/register", methods=['POST'])
+@application.route("/register", methods=['POST'])
 def register():
     """
     Registrar un nuevo usuario
@@ -189,7 +189,7 @@ def register():
     return jsonify({"msg": "user created"}), 200
 
 
-@app.route("/centers", methods=['GET'])
+@application.route("/centers", methods=['GET'])
 @jwt_required()
 def center():
     """
@@ -226,7 +226,7 @@ def center():
     return jsonify(list(centers))
 
 
-@app.route("/profile", methods=['GET'])
+@application.route("/profile", methods=['GET'])
 @jwt_required()
 def profile():
     """
@@ -271,7 +271,7 @@ def profile():
     return jsonify(user)
 
 
-@app.route("/date/create", methods=['POST'])
+@application.route("/date/create", methods=['POST'])
 @jwt_required()
 def createDate():
     
@@ -340,7 +340,7 @@ def createDate():
     return jsonify({"msg": "Date created successfully"}), 200
 
 
-@app.route("/date/getByDay", methods=['POST'])
+@application.route("/date/getByDay", methods=['POST'])
 @jwt_required()
 def getDatesByDay():
     """
@@ -386,7 +386,7 @@ def getDatesByDay():
     return jsonify(format_dates(list(dates)))
 
 
-@app.route("/date/getByUser", methods=['GET'])
+@application.route("/date/getByUser", methods=['GET'])
 @jwt_required()
 def getDateByUser():
     """
@@ -426,7 +426,7 @@ def getDateByUser():
     return jsonify(format_dates(list(dates)))
 
 
-@app.route("/date/delete", methods=['POST'])
+@application.route("/date/delete", methods=['POST'])
 @jwt_required()
 def deleteDate():
     """
@@ -509,7 +509,7 @@ def deleteDate():
     return jsonify({"msg": "Date deleted successfully"}), 200
 
 
-@app.route("/dates", methods=['GET'])
+@application.route("/dates", methods=['GET'])
 @jwt_required()
 def getDates():
     """
@@ -547,7 +547,7 @@ def getDates():
    
     return jsonify(format_dates(list(dates)))
 
-@app.route("/migracion", methods=['GET'])
+@application.route("/migracion", methods=['GET'])
 def migracion():
 
     dblist = myclient.list_database_names()
