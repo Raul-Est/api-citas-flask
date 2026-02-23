@@ -20,12 +20,14 @@ import bcrypt
 from flask_cors import CORS
 from config import Config
 
-
+import pymongo
 """
 Imports de repositorios con SQL
 """
 
 from Repositories.UsersRepository import UsersRepository
+from Repositories.CentersRepository import CenterRepository
+from Repositories.AppointmentsRepository import AppointmmentsRepository
 
 
 app = Flask(__name__)
@@ -73,6 +75,17 @@ swagger = Swagger(app, template={
     "security": [{"Bearer": []}]
 }, config=swagger_config)
 """
+
+# -- Inicializacion de la base de datos y repositorios
+# Aquí vamos a decidir si usamos Mongo o Sql
+
+client = pymongo.MongoClient(app.config["MONGODB_URI"])
+config[MONGO_DB_NAME] = client[app.config["MONGO_DB_NAME"]]
+
+# instanciamos los repositorios globalmente
+users_repo = UsersRepository( ERROR NOTA: db_connection)
+centers_repo = CentersRepository(db_connection)
+appointments_repo = AppointmmentsRepository(db_connection)
 
 @app.route('/', methods=['GET'])
 def hello():
@@ -544,7 +557,7 @@ def getDates():
     """
 
     current_user = get_jwt_identity()
-    mydb = myclient[mydb_name]
+    mydb = client[]
     mycol = mydb["citas"]
 
     dates = mycol.find({"cancel": {"$ne": 1}}, {"_id": 0})
@@ -554,19 +567,19 @@ def getDates():
 @app.route("/migracion", methods=['GET'])
 def migracion():
 
-    dblist = myclient.list_database_names()
+    dblist = client.list_database_names()
     if "Clinica" not in dblist:
-        mydb = myclient[mydb_name]
+        # mydb = myclient[mydb_name]
         collections = ["usuarios", "centros", "citas"]
 
         for collection in collections:
-            mydb.create_collection(collection)
+            db_connection.create_collection(collection)
 
         # Insert two centers related to Madrid
-        mydb["centros"].insert_many([
+        centers_data = [
             {"name": "Centro de Salud Madrid Norte", "address": "Calle de la Salud, 123, Madrid"},
             {"name": "Centro Médico Madrid Sur", "address": "Avenida de la Medicina, 456, Madrid"}
-        ])
+        ]
 
         return jsonify({"msg": "Database and collections created"}), 200
     else:
