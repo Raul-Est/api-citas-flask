@@ -13,4 +13,4 @@ COPY . .
 
 # Expose port and run migration then start with gunicorn
 EXPOSE 5001
-CMD python migrations/001_init_clinica.py && gunicorn --bind 0.0.0.0:5001 application:application
+CMD python migrations/001_init_clinica.py && gunicorn --workers 2 --bind 0.0.0.0:5001 --timeout 120 application:application
